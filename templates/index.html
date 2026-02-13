@@ -17,7 +17,6 @@
         .sc{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
         .sc .lb{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
         .sc .vl{font-size:26px;font-weight:700}.sc .vl.red{color:#e94560}
-        .sc .sb{font-size:10px;color:#aaa;margin-top:3px}
         .main{display:grid;grid-template-columns:300px 1fr;gap:18px;padding:0 30px 30px}
         .sidebar{position:sticky;top:85px;align-self:start}
         .pnl{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:12px}
@@ -79,14 +78,14 @@
 <div class="header">
     <div><h1>Haber <span>Takip</span> Pro</h1></div>
     <div class="hdr-right">
-        <span><span class="dot" id="dot"></span> <span id="stxt">Hazir</span></span>
+        <span><span class="dot" id="dot"></span> <span id="stxt">Haz&#305;r</span></span>
         <span id="lstime">Son tarama: -</span>
     </div>
 </div>
 <div class="stats">
     <div class="sc"><div class="lb">Toplam Haber</div><div class="vl" id="s_total">0</div></div>
     <div class="sc"><div class="lb">Son Taramada</div><div class="vl red" id="s_new">0</div></div>
-    <div class="sc"><div class="lb">Tarama Sayisi</div><div class="vl" id="s_scan">0</div></div>
+    <div class="sc"><div class="lb">Tarama Say&#305;s&#305;</div><div class="vl" id="s_scan">0</div></div>
     <div class="sc"><div class="lb">Kaydedilen</div><div class="vl" id="s_saved">0</div></div>
     <div class="sc"><div class="lb">Anahtar Kelime</div><div class="vl" id="s_kw">0</div></div>
 </div>
@@ -94,22 +93,22 @@
     <div class="sidebar">
         <div class="pnl">
             <h3>Anahtar Kelimeler</h3>
-            <div class="sub">Takip etmek istedigin konulari ekle</div>
+            <div class="sub">Takip etmek istedi&#287;in konular&#305; ekle</div>
             <div class="kw-inp">
-                <input type="text" id="kwInp" placeholder="Yeni kelime..." onkeypress="if(event.key==='Enter')addKw()">
-                <button onclick="addKw()">+</button>
+                <input type="text" id="kwInp" placeholder="Yeni kelime...">
+                <button id="kwAddBtn">+</button>
             </div>
             <div class="kw-list" id="kwList"></div>
         </div>
-        <button class="scan-btn" id="scanBtn" onclick="doScan()">Hemen Tara</button>
+        <button class="scan-btn" id="scanBtn">Hemen Tara</button>
         <div class="pnl" style="margin-top:12px">
             <div class="auto-row" style="border:0;margin:0">
                 <label>Otomatik Tarama</label>
-                <label class="toggle"><input type="checkbox" id="autoTgl" onchange="toggleAuto()"><span class="sl"></span></label>
+                <label class="toggle"><input type="checkbox" id="autoTgl"><span class="sl"></span></label>
             </div>
             <div class="auto-row">
-                <label>Aralik</label>
-                <select class="intv" id="intv" onchange="updateIntv()">
+                <label>Aral&#305;k</label>
+                <select class="intv" id="intv">
                     <option value="5">5 dk</option>
                     <option value="10" selected>10 dk</option>
                     <option value="15">15 dk</option>
@@ -123,146 +122,14 @@
         <div class="feed-hdr">
             <h2>Son Haberler <span class="badge" id="nbadge">0</span></h2>
             <div class="filters">
-                <button class="fbtn active" onclick="setFilter('all',this)">Tumu</button>
-                <button class="fbtn" onclick="setFilter('new',this)">Yeni</button>
-                <button class="fbtn" onclick="setFilter('saved',this)">Kaydedilen</button>
+                <button class="fbtn active" data-filter="all">T&#252;m&#252;</button>
+                <button class="fbtn" data-filter="new">Yeni</button>
+                <button class="fbtn" data-filter="saved">Kaydedilen</button>
             </div>
         </div>
         <div id="nlist">
-            <div class="empty"><div class="ic">&#x1F4F0;</div><p>Henuz haber yok.</p></div>
+            <div class="empty"><div class="ic">&#128240;</div><p>Hen&#252;z haber yok. "Hemen Tara" butonuna bas.</p></div>
         </div>
     </div>
 </div>
 <div class="toast" id="toast"></div>
-
-<script>
-let filter='all', scanning=false, savedSet=new Set(), pollTimer=null;
-
-async function api(path,opts={}){
-    const r=await fetch('/api/'+path,opts);
-    return r.json();
-}
-
-async function loadAll(){
-    const [status,news,kws]=await Promise.all([
-        api('status'),api('news?filter='+filter+'&limit=100'),api('keywords')
-    ]);
-    document.getElementById('s_total').textContent=status.total_news;
-    document.getElementById('s_new').textContent=status.new_count;
-    document.getElementById('s_scan').textContent=status.scan_count;
-    document.getElementById('s_saved').textContent=status.saved_count;
-    document.getElementById('s_kw').textContent=status.keyword_count;
-    document.getElementById('autoTgl').checked=status.auto_scan;
-    document.getElementById('intv').value=status.interval_minutes;
-    if(status.last_scan_time){
-        const d=new Date(status.last_scan_time);
-        document.getElementById('lstime').textContent='Son tarama: '+d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
-    }
-    renderKws(kws.keywords);
-    renderNews(news.news,news.total);
-}
-
-function renderKws(kws){
-    var html='';
-    for(var i=0;i<kws.length;i++){
-        var k=kws[i];
-        html+='<div class="kw-tag">'+k.name+(k.count?'<span class="cnt">'+k.count+'<\/span>':'')+'<span class="rm" onclick="rmKw(\''+k.name+'\')">x<\/span><\/div>';
-    }
-    document.getElementById('kwList').innerHTML=html;
-}
-
-function renderNews(items,total){
-    document.getElementById('nbadge').textContent=total;
-    var c=document.getElementById('nlist');
-    if(!items.length){
-        c.innerHTML='<div class="empty"><div class="ic">&#x1F4F0;<\/div><p>'+(filter==='saved'?'Kaydedilen haber yok.':filter==='new'?'Yeni haber yok.':'Henuz haber yok.')+'<\/p><\/div>';
-        return;
-    }
-    var html='';
-    for(var i=0;i<items.length;i++){
-        var n=items[i];
-        html+='<div class="nc '+(n.is_new?'new':'')+'" onclick="window.open(\''+n.url+'\',\'_blank\')">';
-        html+='<div class="tt">'+esc(n.title)+'<\/div>';
-        html+='<div class="mt"><span class="tg">'+esc(n.keyword)+'<\/span><span class="sr">'+esc(n.source)+'<\/span><span class="tm">'+fmtDate(n.pub_date)+'<\/span><\/div>';
-        html+='<div class="acts" onclick="event.stopPropagation()"><button class="'+(savedSet.has(n.id)?'saved':'')+'" onclick="toggleSave(\''+n.id+'\')">'+( savedSet.has(n.id)?'Kaydedildi':'Kaydet')+'<\/button><\/div><\/div>';
-    }
-    c.innerHTML=html;
-}
-
-async function doScan(){
-    if(scanning)return;
-    scanning=true;
-    var btn=document.getElementById('scanBtn');
-    btn.disabled=true;btn.classList.add('scanning');btn.textContent='Taraniyor...';
-    document.getElementById('lbar').style.width='60%';
-    document.getElementById('stxt').textContent='Taraniyor...';
-    try{
-        var r=await api('scan',{method:'POST'});
-        document.getElementById('lbar').style.width='100%';
-        toast(r.new_count+' yeni haber bulundu!','ok');
-        await loadAll();
-    }catch(e){toast('Tarama hatasi','err')}
-    setTimeout(function(){document.getElementById('lbar').style.width='0'},800);
-    btn.disabled=false;btn.classList.remove('scanning');btn.textContent='Hemen Tara';
-    document.getElementById('stxt').textContent='Hazir';
-    scanning=false;
-}
-
-async function addKw(){
-    var inp=document.getElementById('kwInp');
-    var kw=inp.value.trim();if(!kw)return;
-    var r=await api('keywords',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:kw})});
-    if(r.error){toast(r.error,'err');return}
-    inp.value='';toast(kw+' eklendi','ok');loadAll();
-}
-
-async function rmKw(kw){
-    await api('keywords/'+encodeURIComponent(kw),{method:'DELETE'});
-    toast(kw+' kaldirildi');loadAll();
-}
-
-async function toggleSave(id){
-    await api('save/'+id,{method:'POST'});
-    if(savedSet.has(id)){savedSet.delete(id);toast('Kaldirildi')}else{savedSet.add(id);toast('Kaydedildi','ok')}
-    loadAll();
-}
-
-async function toggleAuto(){
-    var on=document.getElementById('autoTgl').checked;
-    await api('settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_scan:on})});
-    toast(on?'Otomatik tarama acildi':'Otomatik tarama kapatildi','ok');
-    if(on)startPoll();else stopPoll();
-}
-
-async function updateIntv(){
-    var v=parseInt(document.getElementById('intv').value);
-    await api('settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({interval_minutes:v})});
-    toast('Aralik '+v+' dakika olarak ayarlandi','ok');
-}
-
-function setFilter(f,btn){
-    filter=f;
-    document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('active')});
-    if(btn)btn.classList.add('active');
-    loadAll();
-}
-
-function startPoll(){stopPoll();pollTimer=setInterval(loadAll,30000)}
-function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
-
-function fmtDate(s){
-    if(!s)return'';
-    var d=new Date(s),now=new Date(),diff=(now-d)/1000/60;
-    if(diff<60)return Math.round(diff)+' dk once';
-    if(diff<1440)return Math.round(diff/60)+' saat once';
-    return d.toLocaleDateString('tr-TR')+' '+d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
-}
-
-function esc(t){var d=document.createElement('div');d.textContent=t;return d.innerHTML}
-function toast(m,t){var e=document.getElementById('toast');e.textContent=m;e.className='toast '+(t||'');e.style.display='block';setTimeout(function(){e.style.display='none'},3000)}
-
-loadAll();
-startPoll();
-<\/script>
-</body>
-  </html>
