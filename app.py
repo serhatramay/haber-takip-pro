@@ -55,14 +55,13 @@ def save_data(data):
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 # ==================== GOOGLE NEWS TARAMA ====================
+
 def scan_keyword(keyword, seen_urls):
     """Tek bir anahtar kelimeyi Google News RSS'ten tara"""
     url = f'https://news.google.com/rss/search?q={urllib.parse.quote(keyword)}&hl=tr&gl=TR&ceid=TR:tr'
-
     try:
         feed = feedparser.parse(url)
         results = []
-
         for entry in feed.entries[:20]:
             link = entry.get('link', '')
             if not link or link in seen_urls:
@@ -96,7 +95,6 @@ def scan_keyword(keyword, seen_urls):
                 'is_new': True,
                 'found_at': datetime.now().isoformat()
             })
-
         return results
     except Exception as e:
         print(f'[HATA] "{keyword}" taraması başarısız: {e}')
@@ -117,6 +115,9 @@ def run_scan():
         all_new.extend(results)
         time.sleep(0.5)  # Rate limiting
 
+    # Yeni haberleri tarihe göre sırala (en yeni en üstte)
+    all_new.sort(key=lambda x: x.get('pub_timestamp', 0), reverse=True)
+
     # Yeni URL'leri ekle
     for n in all_new:
         seen_urls.add(n['url'])
@@ -127,8 +128,8 @@ def run_scan():
     data['seen_urls'] = list(seen_urls)
     data['scan_count'] = data.get('scan_count', 0) + 1
     data['last_scan_time'] = datetime.now().isoformat()
-
     save_data(data)
+
     print(f'[TARAMA] {len(all_new)} yeni haber bulundu. Toplam: {len(data["news"])}')
     return len(all_new)
 
@@ -138,10 +139,8 @@ scheduler = BackgroundScheduler()
 def setup_scheduler():
     data = load_data()
     interval = data.get('interval_minutes', 10)
-
     # Mevcut job'ları temizle
     scheduler.remove_all_jobs()
-
     if data.get('auto_scan', True):
         scheduler.add_job(
             run_scan,
@@ -151,11 +150,11 @@ def setup_scheduler():
             replace_existing=True
         )
         print(f'[ZAMANLAYICI] Otomatik tarama aktif: her {interval} dakikada bir')
-
     if not scheduler.running:
         scheduler.start()
 
 # ==================== API ROUTES ====================
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -216,11 +215,9 @@ def add_keyword():
     kw = request.json.get('keyword', '').strip().lower()
     if not kw:
         return jsonify({'error': 'Kelime boş olamaz'}), 400
-
     data = load_data()
     if kw in data['keywords']:
         return jsonify({'error': 'Bu kelime zaten ekli'}), 400
-
     data['keywords'].append(kw)
     save_data(data)
     return jsonify({'success': True, 'keyword': kw})
@@ -255,12 +252,10 @@ def toggle_save(news_id):
 def update_settings():
     data = load_data()
     body = request.json
-
     if 'auto_scan' in body:
         data['auto_scan'] = body['auto_scan']
     if 'interval_minutes' in body:
         data['interval_minutes'] = body['interval_minutes']
-
     save_data(data)
     setup_scheduler()
     return jsonify({'success': True})
