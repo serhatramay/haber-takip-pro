@@ -133,3 +133,242 @@
     </div>
 </div>
 <div class="toast" id="toast"></div>
+
+<script>
+var filter = 'all';
+var scanning = false;
+var savedSet = {};
+var pollTimer = null;
+
+function api(path, opts) {
+    opts = opts || {};
+    return fetch('/api/' + path, opts).then(function(r) { return r.json(); });
+}
+
+function loadAll() {
+    Promise.all([
+        api('status'),
+        api('news?filter=' + filter + '&limit=100'),
+        api('keywords')
+    ]).then(function(results) {
+        var status = results[0];
+        var news = results[1];
+        var kws = results[2];
+        document.getElementById('s_total').textContent = status.total_news;
+        document.getElementById('s_new').textContent = status.new_count;
+        document.getElementById('s_scan').textContent = status.scan_count;
+        document.getElementById('s_saved').textContent = status.saved_count;
+        document.getElementById('s_kw').textContent = status.keyword_count;
+        document.getElementById('autoTgl').checked = status.auto_scan;
+        document.getElementById('intv').value = status.interval_minutes;
+        if (status.last_scan_time) {
+            var d = new Date(status.last_scan_time);
+            document.getElementById('lstime').textContent = 'Son tarama: ' + d.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+        }
+        renderKws(kws.keywords);
+        renderNews(news.news, news.total);
+    }).catch(function(e) {
+        console.error('loadAll error:', e);
+    });
+}
+
+function renderKws(kws) {
+    var el = document.getElementById('kwList');
+    var html = '';
+    for (var i = 0; i < kws.length; i++) {
+        var k = kws[i];
+        html += '<div class="kw-tag">' + esc(k.name);
+        if (k.count) {
+            html += '<span class="cnt">' + k.count + '</span>';
+        }
+        html += '<span class="rm" data-kw="' + esc(k.name) + '">&times;</span></div>';
+    }
+    el.innerHTML = html;
+}
+
+function renderNews(items, total) {
+    document.getElementById('nbadge').textContent = total;
+    var c = document.getElementById('nlist');
+    if (!items || !items.length) {
+        var msg = 'Hen\u00fcz haber yok.';
+        if (filter === 'saved') msg = 'Kaydedilen haber yok.';
+        if (filter === 'new') msg = 'Yeni haber yok.';
+        c.innerHTML = '<div class="empty"><div class="ic">&#128240;</div><p>' + msg + '</p></div>';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+        var n = items[i];
+        html += '<div class="nc ' + (n.is_new ? 'new' : '') + '" data-url="' + esc(n.url) + '">';
+        html += '<div class="tt">' + esc(n.title) + '</div>';
+        html += '<div class="mt">';
+        html += '<span class="tg">' + esc(n.keyword) + '</span>';
+        html += '<span class="sr">' + esc(n.source) + '</span>';
+        html += '<span class="tm">' + fmtDate(n.pub_date) + '</span>';
+        html += '</div>';
+        html += '<div class="acts">';
+        html += '<button class="save-btn ' + (savedSet[n.id] ? 'saved' : '') + '" data-id="' + n.id + '">' + (savedSet[n.id] ? 'Kaydedildi' : 'Kaydet') + '</button>';
+        html += '</div></div>';
+    }
+    c.innerHTML = html;
+}
+
+function doScan() {
+    if (scanning) return;
+    scanning = true;
+    var btn = document.getElementById('scanBtn');
+    btn.disabled = true;
+    btn.classList.add('scanning');
+    btn.textContent = 'Taran\u0131yor...';
+    document.getElementById('lbar').style.width = '60%';
+    document.getElementById('stxt').textContent = 'Taran\u0131yor...';
+    api('scan', {method: 'POST'}).then(function(r) {
+        document.getElementById('lbar').style.width = '100%';
+        toast(r.new_count + ' yeni haber bulundu!', 'ok');
+        loadAll();
+    }).catch(function(e) {
+        toast('Tarama hatas\u0131', 'err');
+    }).finally(function() {
+        setTimeout(function() { document.getElementById('lbar').style.width = '0'; }, 800);
+        btn.disabled = false;
+        btn.classList.remove('scanning');
+        btn.textContent = 'Hemen Tara';
+        document.getElementById('stxt').textContent = 'Haz\u0131r';
+        scanning = false;
+    });
+}
+
+function addKw() {
+    var inp = document.getElementById('kwInp');
+    var kw = inp.value.trim();
+    if (!kw) return;
+    api('keywords', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({keyword: kw})
+    }).then(function(r) {
+        if (r.error) { toast(r.error, 'err'); return; }
+        inp.value = '';
+        toast(kw + ' eklendi', 'ok');
+        loadAll();
+    });
+}
+
+function rmKw(kw) {
+    api('keywords/' + encodeURIComponent(kw), {method: 'DELETE'}).then(function() {
+        toast(kw + ' kald\u0131r\u0131ld\u0131');
+        loadAll();
+    });
+}
+
+function toggleSave(id) {
+    api('save/' + id, {method: 'POST'}).then(function() {
+        if (savedSet[id]) {
+            delete savedSet[id];
+            toast('Kald\u0131r\u0131ld\u0131');
+        } else {
+            savedSet[id] = true;
+            toast('Kaydedildi', 'ok');
+        }
+        loadAll();
+    });
+}
+
+function toggleAuto() {
+    var on = document.getElementById('autoTgl').checked;
+    api('settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({auto_scan: on})
+    }).then(function() {
+        toast(on ? 'Otomatik tarama a\u00e7\u0131ld\u0131' : 'Otomatik tarama kapat\u0131ld\u0131', 'ok');
+        if (on) startPoll(); else stopPoll();
+    });
+}
+
+function updateIntv() {
+    var v = parseInt(document.getElementById('intv').value);
+    api('settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({interval_minutes: v})
+    }).then(function() {
+        toast('Aral\u0131k ' + v + ' dakika olarak ayarland\u0131', 'ok');
+    });
+}
+
+function setFilter(f, btn) {
+    filter = f;
+    var btns = document.querySelectorAll('.fbtn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+    if (btn) btn.classList.add('active');
+    loadAll();
+}
+
+function startPoll() { stopPoll(); pollTimer = setInterval(loadAll, 30000); }
+function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+function fmtDate(s) {
+    if (!s) return '';
+    var d = new Date(s);
+    var now = new Date();
+    var diff = (now - d) / 1000 / 60;
+    if (diff < 60) return Math.round(diff) + ' dk \u00f6nce';
+    if (diff < 1440) return Math.round(diff / 60) + ' saat \u00f6nce';
+    return d.toLocaleDateString('tr-TR') + ' ' + d.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function esc(t) {
+    if (!t) return '';
+    var d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+
+function toast(m, t) {
+    var e = document.getElementById('toast');
+    e.textContent = m;
+    e.className = 'toast ' + (t || '');
+    e.style.display = 'block';
+    setTimeout(function() { e.style.display = 'none'; }, 3000);
+}
+
+// Event listeners
+document.getElementById('scanBtn').addEventListener('click', doScan);
+document.getElementById('kwAddBtn').addEventListener('click', addKw);
+document.getElementById('kwInp').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') addKw();
+});
+document.getElementById('autoTgl').addEventListener('change', toggleAuto);
+document.getElementById('intv').addEventListener('change', updateIntv);
+
+document.querySelector('.filters').addEventListener('click', function(e) {
+    var btn = e.target;
+    if (btn.dataset.filter) {
+        setFilter(btn.dataset.filter, btn);
+    }
+});
+
+document.getElementById('kwList').addEventListener('click', function(e) {
+    if (e.target.classList.contains('rm')) {
+        rmKw(e.target.dataset.kw);
+    }
+});
+
+document.getElementById('nlist').addEventListener('click', function(e) {
+    var card = e.target.closest('.nc');
+    var saveBtn = e.target.closest('.save-btn');
+    if (saveBtn) {
+        e.stopPropagation();
+        toggleSave(saveBtn.dataset.id);
+    } else if (card && card.dataset.url) {
+        window.open(card.dataset.url, '_blank');
+    }
+});
+
+loadAll();
+startPoll();
+</script>
+</body>
+</html>
+
