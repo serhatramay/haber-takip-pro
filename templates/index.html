@@ -7,7 +7,7 @@
         <style>
                     *{margin:0;padding:0;box-sizing:border-box}
                     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
-                    .header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:18px 30px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+                    .header{background:linear-gradient(135de,#1a1a2e,#16213e);color:#fff;padding:18px 30px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.2)}
                     .header h1{font-size:22px;font-weight:700}.header h1 span{color:#e94560}
                     .hdr-right{display:flex;align-items:center;gap:15px;font-size:13px;opacity:.85}
                     .dot{width:8px;height:8px;border-radius:50%;background:#4ecca3;display:inline-block;animation:pulse 2s infinite}
@@ -77,7 +77,7 @@
                 </style>
     </head>
     <body>
-        <div class="lbar" id="lbar"></div>div>
+        <div class="lbar" id="lbar"></div>
         <div class="header">
                 <div><h1>Haber <span>Takip</span> Pro</h1></div>
             <div class="hdr-right">
@@ -99,24 +99,24 @@
                             <div class="sub">Takip etmek istediğin konuları ekle</div>
                             <div class="kw-inp">
                                             <input type="text" id="kwInp" placeholder="Yeni kelime...">
-                                            <button id="kwAddBtn">+</button>button>
+                                            <button id="kwAddBtn">+</button>
                             </div>
                             <div class="kw-list" id="kwList"></div>
                 </div>
-                <button class="scan-btn" id="scanBtn">Hemen Tara</button>button>
+                <button class="scan-btn" id="scanBtn">Hemen Tara</button>
                 <div class="pnl" style="margin-top:12px">
                             <div class="auto-row" style="border:0;margin:0">
                                             <label>Otomatik Tarama</label>
-                                            <label class="toggle"><input type="checkbox" id="autoTgl"><span class="sl"></span>span></label>
+                                            <label class="toggle"><input type="checkbox" id="autoTgl"><span class="sl"></span></label>
                             </div>
                             <div class="auto-row">
                                             <label>Aralık</label>
                                             <select class="intv" id="intv">
-                                                                <option value="5">5 dk</option>option>
-                                                                <option value="10" selected>10 dk</option>option>
-                                                                <option value="15">15 dk</option>option>
-                                                                <option value="30">30 dk</option>option>
-                                            </select>select>
+                                                                <option value="5">5 dk</option>
+                                                                <option value="10" selected>10 dk</option>
+                                                                <option value="15">15 dk</option>
+                                                                <option value="30">30 dk</option>
+                                            </select>
                             </div>
                             <div class="next-info" id="nextInfo"></div>
                 </div>
@@ -125,9 +125,9 @@
                 <div class="feed-hdr">
                             <h2>Son Haberler <span class="badge" id="nbadge">0</span></h2>
                             <div class="filters">
-                                            <button class="fbtn active" data-filter="all">Tümü</button>button>
-                                            <button class="fbtn" data-filter="new">Yeni</button>button>
-                                            <button class="fbtn" data-filter="saved">Kaydedilen</button>button>
+                                            <button class="fbtn active" data-filter="all">Tümü</button>
+                                            <button class="fbtn" data-filter="new">Yeni</button>
+                                            <button class="fbtn" data-filter="saved">Kaydedilen</button>
                             </div>
                 </div>
                 <div id="nlist">
