@@ -7,7 +7,7 @@ Anahtar kelimeleri Google News'te tarar ve yeni haberleri listeler.
 from flask import Flask, jsonify, render_template, request
 from apscheduler.schedulers.background import BackgroundScheduler
 import feedparser
-import urllib.par
+import urllib.parse
 import time
 import json
 import os
