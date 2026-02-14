@@ -7,7 +7,7 @@ Anahtar kelimeleri Google News'te tarar ve yeni haberleri listeler.
 from flask import Flask, jsonify, render_template, request
 from apscheduler.schedulers.background import BackgroundScheduler
 import feedparser
-import urllib.parse
+import urllib.par
 import time
 import json
 import os
@@ -33,7 +33,7 @@ def default_data():
         'scan_count': 0,
         'last_scan_time': None,
         'auto_scan': True,
-        'interval_minutes': 10,
+        'interval_minutes': 5,
         'seen_urls': []
     }
 
@@ -62,7 +62,7 @@ def scan_keyword(keyword, seen_urls):
     try:
         feed = feedparser.parse(url)
         results = []
-        for entry in feed.entries[:20]:
+        for entry in feed.entries[:50]:
             link = entry.get('link', '')
             if not link or link in seen_urls:
                 continue
@@ -261,9 +261,11 @@ def update_settings():
     return jsonify({'success': True})
 
 # ==================== BAŞLAT ====================
+# Gunicorn ve dogrudan calistirma icin baslat
+if not os.path.exists(DATA_FILE):
+    save_data(default_data())
+
+setup_scheduler()
+
 if __name__ == '__main__':
-    setup_scheduler()
-    # İlk çalıştırmada otomatik tarama
-    if not os.path.exists(DATA_FILE):
-        save_data(default_data())
     app.run(debug=True, port=5000, use_reloader=False)
